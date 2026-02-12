@@ -1,50 +1,55 @@
 const fs = require("fs");
-const axios = require("axios");
-const FormData = require("form-data");
+const vision = require("@google-cloud/vision");
+
+function getVisionClient() {
+    const credentials = JSON.parse(
+        process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+    );
+
+    return new vision.ImageAnnotatorClient({ credentials });
+}
 
 async function extractTextFromPDF(filePath) {
     try {
-        const apiKey = process.env.OCR_API_KEY;
-        console.log("OCR API KEY exists:", !!apiKey);
+        const client = getVisionClient();
 
-        const formData = new FormData();
-        formData.append("file", fs.createReadStream(filePath));
-        formData.append("apikey", apiKey);
-        formData.append("language", "eng");
-        formData.append("isOverlayRequired", "false");
+        const fileBuffer = fs.readFileSync(filePath);
 
-        // ✅ CRITICAL FIX
-        formData.append("filetype", "PDF");
-        formData.append("OCREngine", "2");
+        const request = {
+            requests: [
+                {
+                    inputConfig: {
+                        content: fileBuffer.toString("base64"),
+                        mimeType: "application/pdf",
+                    },
+                    features: [
+                        { type: "DOCUMENT_TEXT_DETECTION" }
+                    ],
+                },
+            ],
+        };
 
-        const response = await axios.post(
-            "https://api.ocr.space/parse/image",
-            formData,
-            {
-                headers: formData.getHeaders(),
-                timeout: 60000
+        const [response] = await client.batchAnnotateFiles(request);
+
+        const responses = response.responses[0].responses;
+
+        let fullText = "";
+
+        for (const page of responses) {
+            if (page.fullTextAnnotation?.text) {
+                fullText += page.fullTextAnnotation.text + "\n";
             }
-        );
-
-        console.log("OCR RAW RESPONSE:", JSON.stringify(response.data, null, 2));
-
-        if (response.data.IsErroredOnProcessing) {
-            throw new Error(response.data.ErrorMessage);
         }
 
-        const text = response.data.ParsedResults
-            ?.map(r => r.ParsedText)
-            .join("\n");
-
-        if (!text || text.trim().length === 0) {
-            throw new Error("OCR returned empty text");
+        if (!fullText.trim()) {
+            throw new Error("No text extracted from PDF");
         }
 
-        return text;
+        return fullText;
 
     } catch (error) {
-        console.error("OCR Extraction Error FULL:", error);
-        throw new Error("Error extracting text from PDF using OCR API");
+        console.error("Google Vision OCR Error:", error);
+        throw new Error("Error extracting text using Google Vision OCR");
     }
 }
 
