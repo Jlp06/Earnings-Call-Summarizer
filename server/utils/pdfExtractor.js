@@ -13,6 +13,10 @@ async function extractTextFromPDF(filePath) {
         formData.append("language", "eng");
         formData.append("isOverlayRequired", "false");
 
+        // ✅ CRITICAL FIX
+        formData.append("filetype", "PDF");
+        formData.append("OCREngine", "2");
+
         const response = await axios.post(
             "https://api.ocr.space/parse/image",
             formData,
