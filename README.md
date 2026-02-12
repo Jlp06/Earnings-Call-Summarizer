@@ -93,6 +93,16 @@ LLM Summarization
 
 5. User can download summary as a PDF report.
 
+# ⚠️ Known Limitations (Free Hosting)
+
+- The backend is deployed on Render free tier and may take 30–60 seconds to wake up after inactivity.
+
+- Large multi-page PDFs may require longer processing time.
+
+- Google Vision OCR usage is limited to the free monthly quota.
+
+- File uploads are recommended under 10MB for optimal reliability.
+
 # 📈 Future Improvements
 
 - User authentication & history
