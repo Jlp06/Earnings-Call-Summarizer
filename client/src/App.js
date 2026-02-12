@@ -33,7 +33,7 @@ function App() {
       setAnalysis("");
 
       const response = await axios.post(
-        "http://localhost:5000/api/analyze",
+        `${process.env.REACT_APP_API_URL}/api/analyze`,
         formData
       );
 
