@@ -1,69 +1,51 @@
 const fs = require("fs");
-const pdfParse = require("pdf-parse");
-const Tesseract = require("tesseract.js");
-const pdfPoppler = require("pdf-poppler");
-
-async function convertPdfToImages(filePath) {
-    const outputDir = "uploads";
-
-    const opts = {
-        format: "png",
-        out_dir: outputDir,
-        out_prefix: "page",
-        page: null,
-        pdftoppm_path: "pdftoppm"
-    };
-
-    await pdfPoppler.convert(filePath, opts);
-
-    const files = fs.readdirSync(outputDir)
-        .filter(f => f.startsWith("page") && f.endsWith(".png"));
-
-    return files.map(f => `${outputDir}/${f}`);
-}
+const axios = require("axios");
+const FormData = require("form-data");
 
 async function extractTextFromPDF(filePath) {
     try {
-        const cachedFile = "uploads/ocr_text.txt";
+        const apiKey = process.env.OCR_API_KEY;
 
-        // ---- NEW: If OCR text already exists, reuse it ----
-        if (fs.existsSync(cachedFile)) {
-            console.log("Using cached OCR text...");
-            return fs.readFileSync(cachedFile, "utf-8");
+        if (!apiKey) {
+            throw new Error("OCR API Key not configured");
         }
 
-        const dataBuffer = fs.readFileSync(filePath);
+        const formData = new FormData();
+        formData.append("file", fs.createReadStream(filePath));
+        formData.append("apikey", apiKey);
+        formData.append("language", "eng");
+        formData.append("isOverlayRequired", "false");
 
-        try {
-            const data = await pdfParse(dataBuffer);
-            if (data.text && data.text.trim().length > 0) {
-                return data.text;
+        console.log("Sending PDF to OCR API...");
+
+        const response = await axios.post(
+            "https://api.ocr.space/parse/image",
+            formData,
+            {
+                headers: formData.getHeaders(),
+                maxContentLength: Infinity,
+                maxBodyLength: Infinity
             }
-        } catch (e) {
-            console.log("Normal PDF parsing failed, switching to OCR...");
+        );
+
+        if (
+            response.data &&
+            response.data.ParsedResults &&
+            response.data.ParsedResults.length > 0
+        ) {
+            const text = response.data.ParsedResults
+                .map(r => r.ParsedText)
+                .join("\n");
+
+            console.log("OCR extraction successful.");
+            return text;
+        } else {
+            throw new Error("No text returned from OCR API");
         }
-
-        console.log("Converting PDF to images...");
-        const images = await convertPdfToImages(filePath);
-
-        let fullText = "";
-
-        for (const img of images) {
-            console.log("Running OCR on:", img);
-
-            const result = await Tesseract.recognize(img, "eng");
-            fullText += result.data.text + "\n";
-        }
-
-        // ---- SAVE OCR OUTPUT FOR FUTURE RUNS ----
-        fs.writeFileSync(cachedFile, fullText);
-        console.log("OCR text saved for future use.");
-
-        return fullText;
 
     } catch (error) {
-        console.error("Extraction Error:", error.message);
-        throw new Error("Error extracting text from PDF");
+        console.error("OCR Extraction Error:", error.message);
+        throw new Error("Error extracting text from PDF using OCR API");
     }
 }
 

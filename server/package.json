@@ -16,10 +16,9 @@
     "cors": "^2.8.6",
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
+    "form-data": "^4.0.5",
     "multer": "^2.0.2",
     "node-summarizer": "^1.0.7",
-    "pdf-parse": "^2.4.5",
-    "pdf-poppler": "^0.2.3",
-    "tesseract.js": "^7.0.0"
+    "pdf-parse": "^2.4.5"
   }
 }
