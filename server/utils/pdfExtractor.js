@@ -5,10 +5,7 @@ const FormData = require("form-data");
 async function extractTextFromPDF(filePath) {
     try {
         const apiKey = process.env.OCR_API_KEY;
-
-        if (!apiKey) {
-            throw new Error("OCR API Key not configured");
-        }
+        console.log("OCR API KEY exists:", !!apiKey);
 
         const formData = new FormData();
         formData.append("file", fs.createReadStream(filePath));
@@ -16,35 +13,33 @@ async function extractTextFromPDF(filePath) {
         formData.append("language", "eng");
         formData.append("isOverlayRequired", "false");
 
-        console.log("Sending PDF to OCR API...");
-
         const response = await axios.post(
             "https://api.ocr.space/parse/image",
             formData,
             {
                 headers: formData.getHeaders(),
-                maxContentLength: Infinity,
-                maxBodyLength: Infinity
+                timeout: 60000
             }
         );
 
-        if (
-            response.data &&
-            response.data.ParsedResults &&
-            response.data.ParsedResults.length > 0
-        ) {
-            const text = response.data.ParsedResults
-                .map(r => r.ParsedText)
-                .join("\n");
+        console.log("OCR RAW RESPONSE:", JSON.stringify(response.data, null, 2));
 
-            console.log("OCR extraction successful.");
-            return text;
-        } else {
-            throw new Error("No text returned from OCR API");
+        if (response.data.IsErroredOnProcessing) {
+            throw new Error(response.data.ErrorMessage);
         }
 
+        const text = response.data.ParsedResults
+            ?.map(r => r.ParsedText)
+            .join("\n");
+
+        if (!text || text.trim().length === 0) {
+            throw new Error("OCR returned empty text");
+        }
+
+        return text;
+
     } catch (error) {
-        console.error("OCR Extraction Error:", error.message);
+        console.error("OCR Extraction Error FULL:", error);
         throw new Error("Error extracting text from PDF using OCR API");
     }
 }
