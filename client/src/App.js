@@ -73,27 +73,44 @@ function App() {
 
   return (
     <div className="container">
-      <h1>Concall PDF Summarizer</h1>
+      <h1 className="title">📊 Earnings Call Summarizer</h1>
 
-      <form onSubmit={handleSubmit} className="upload-box">
-        <input type="file" accept="application/pdf" onChange={handleFileChange} />
-        <button type="submit">Analyze PDF</button>
-      </form>
+      <div className="card">
+        <form onSubmit={handleSubmit} className="upload-box">
+          <label className="file-label">
+            {file ? file.name : "Choose PDF file"}
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={handleFileChange}
+              hidden
+            />
+          </label>
+
+          <button type="submit" className="analyze-btn">
+            Analyze PDF
+          </button>
+        </form>
+      </div>
 
       {loading && (
         <div className="loader">
-          <Oval color="#00BFFF" height={60} width={60} />
-          <p>Analyzing document... please wait</p>
+          <Oval color="#4f46e5" height={60} width={60} />
+          <p>Processing scanned document... This may take up to 60 seconds.</p>
         </div>
       )}
 
-      {error && <p className="error">{error}</p>}
+      {error && <div className="error-box">{error}</div>}
 
       {analysis && (
         <div className="result-box">
           <h2>Analysis Result</h2>
 
-          <pre className="analysis-text">{analysis}</pre>
+          {analysis.split("\n").map((line, index) => (
+            <p key={index} className="analysis-line">
+              {line}
+            </p>
+          ))}
 
           <button onClick={downloadPDF} className="download-btn">
             Download as PDF
